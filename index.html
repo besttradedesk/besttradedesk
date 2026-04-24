@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Options Trade Tracker — IBKR Auto-Sync for Notion | BestTradeDesk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --btd-bg-deep:     #1C1A15;
+    --btd-bg-card:     #27231A;
+    --btd-bg-elevated: #3D3626;
+    --btd-gold-deep:   #412402;
+    --btd-gold:        #BA7517;
+    --btd-gold-mid:    #EF9F27;
+    --btd-gold-light:  #FAC775;
+    --btd-text:        #F5E6C8;
+    --btd-text-muted:  #A89070;
+    --btd-border:      rgba(186,117,23,0.25);
+    --btd-border-soft: rgba(250,199,117,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    color: var(--btd-text);
+    background: var(--btd-bg-deep);
+  }
+  h1, h2, h3, h4, .section-label, .badge, .price-name, .price-best, .step-num {
+    font-family: 'Sora', system-ui, sans-serif;
+  }
+
+  /* ─── Logo mark SVG (candlestick) ─── */
+  .logo-mark { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+  .logo-mark svg { width: 32px; height: 32px; }
+  .logo-text { font-family: 'Sora', sans-serif; font-weight: 700; font-size: 1.1rem; color: var(--btd-gold-light); letter-spacing: -0.3px; }
+
+  /* ─── NAV ─── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(28,26,21,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--btd-border);
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  nav .nav-links { display: flex; gap: 28px; }
+  nav .nav-links a { color: var(--btd-text-muted); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: color 0.2s; }
+  nav .nav-links a:hover { color: var(--btd-gold-light); }
+  nav .nav-cta {
+    background: var(--btd-gold);
+    color: #fff;
+    font-family: 'Sora', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 9px 20px;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+  }
+  nav .nav-cta:hover { background: var(--btd-gold-mid); transform: translateY(-1px); }
+
+  /* ─── HERO ─── */
+  .hero {
+    background: linear-gradient(160deg, #1C1A15 0%, #231F14 55%, #2A2208 100%);
+    padding: 100px 20px 80px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid var(--btd-border);
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(186,117,23,0.12) 0%, transparent 65%);
+    top: -220px; right: -120px;
+    pointer-events: none;
+  }
+  .hero::after {
+    content: '';
+    position: absolute;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(239,159,39,0.08) 0%, transparent 65%);
+    bottom: -100px; left: -80px;
+    pointer-events: none;
+  }
+  .badge {
+    display: inline-block;
+    background: rgba(186,117,23,0.18);
+    border: 1px solid rgba(186,117,23,0.45);
+    color: var(--btd-gold-light);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 6px 18px;
+    border-radius: 20px;
+    margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 800;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    color: var(--btd-text);
+  }
+  .hero h1 span { color: var(--btd-gold-mid); }
+  .hero p {
+    font-size: 1.15rem;
+    color: var(--btd-text-muted);
+    max-width: 600px;
+    margin: 0 auto 44px;
+    line-height: 1.75;
+  }
+
+  .cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--btd-gold);
+    color: #fff;
+    border: none;
+    padding: 16px 36px;
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .btn-primary:hover { background: var(--btd-gold-mid); transform: translateY(-2px); }
+  .btn-secondary {
+    background: transparent;
+    color: var(--btd-text);
+    border: 2px solid var(--btd-border);
+    padding: 16px 36px;
+    border-radius: 8px;
+    font-family: 'Sora', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--btd-gold); color: var(--btd-gold-light); }
+
+  .hero-meta {
+    margin-top: 52px;
+    display: flex;
+    justify-content: center;
+    gap: 52px;
+    flex-wrap: wrap;
+  }
+  .hero-stat { text-align: center; }
+  .hero-stat .num { font-family: 'Sora', sans-serif; font-size: 2rem; font-weight: 800; color: var(--btd-gold-mid); }
+  .hero-stat .label { font-size: 0.75rem; color: var(--btd-text-muted); text-transform: uppercase; letter-spacing: 1.5px; margin-top: 4px; }
+
+  /* ─── DB PREVIEW ─── */
+  .db-preview {
+    background: #18160F;
+    border: 1px solid var(--btd-border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 48px auto 0;
+    max-width: 900px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(186,117,23,0.1);
+    position: relative; z-index: 1;
+  }
+  .db-header {
+    background: #201D12;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--btd-border-soft);
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot-r { background: #e53935; }
+  .dot-y { background: var(--btd-gold); }
+  .dot-g { background: #4caf50; }
+  .db-header span { color: var(--btd-text-muted); font-size: 0.8rem; margin-left: 8px; font-family: monospace; }
+  .db-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .db-table th {
+    padding: 10px 14px;
+    text-align: left;
+    color: var(--btd-text-muted);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-bottom: 1px solid var(--btd-border-soft);
+    font-family: 'Inter', sans-serif;
+  }
+  .db-table td {
+    padding: 11px 14px;
+    color: var(--btd-text);
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .tag { display: inline-block; padding: 2px 9px; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+  .tag-open   { background: rgba(186,117,23,0.2);  color: var(--btd-gold-light); }
+  .tag-closed { background: rgba(76,175,80,0.18);  color: #81c784; }
+  .tag-call   { background: rgba(33,150,243,0.18); color: #64b5f6; }
+  .tag-put    { background: rgba(156,39,176,0.18); color: #ce93d8; }
+  .tag-long   { background: rgba(76,175,80,0.15);  color: #81c784; }
+  .tag-short  { background: rgba(186,117,23,0.15); color: var(--btd-gold-light); }
+  .pos { color: #6fcf97; font-weight: 700; }
+  .neg { color: #eb5757; font-weight: 700; }
+
+  /* ─── SOCIAL PROOF ─── */
+  .social-proof {
+    background: var(--btd-bg-card);
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid var(--btd-border-soft);
+  }
+  .social-proof p { color: var(--btd-text-muted); font-size: 0.9rem; }
+  .social-proof strong { color: var(--btd-gold-light); }
+
+  /* ─── SECTIONS ─── */
+  .section { padding: 88px 20px; max-width: 1100px; margin: 0 auto; }
+  .section-label {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--btd-gold);
+    margin-bottom: 14px;
+  }
+  .section h2 {
+    text-align: center;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 800;
+    margin-bottom: 16px;
+    color: var(--btd-text);
+  }
+  .section .subtitle {
+    text-align: center;
+    color: var(--btd-text-muted);
+    font-size: 1.05rem;
+    max-width: 600px;
+    margin: 0 auto 64px;
+    line-height: 1.75;
+  }
+
+  /* ─── FEATURES GRID ─── */
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .feature-card {
+    background: var(--btd-bg-card);
+    border: 1px solid var(--btd-border-soft);
+    border-radius: 16px;
+    padding: 32px;
+    transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+  }
+  .feature-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--btd-border);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(186,117,23,0.15);
+  }
+  .feature-icon { font-size: 2.2rem; margin-bottom: 18px; }
+  .feature-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; color: var(--btd-text); }
+  .feature-card p { color: var(--btd-text-muted); line-height: 1.75; font-size: 0.95rem; }
+
+  /* ─── HOW IT WORKS ─── */
+  .how-bg { background: var(--btd-bg-card); border-top: 1px solid var(--btd-border-soft); border-bottom: 1px solid var(--btd-border-soft); }
+  .how-section { padding: 88px 20px; max-width: 900px; margin: 0 auto; }
+  .how-section .section-label { color: var(--btd-gold); }
+  .how-section h2 {
+    text-align: center;
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 800;
+    margin-bottom: 64px;
+    color: var(--btd-text);
+  }
+  .steps { display: flex; flex-direction: column; gap: 0; }
+  .step { display: flex; gap: 24px; align-items: flex-start; position: relative; padding-bottom: 44px; }
+  .step:last-child { padding-bottom: 0; }
+  .step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 23px; top: 52px;
+    width: 2px; bottom: 0;
+    background: var(--btd-border);
+  }
+  .step-num {
+    width: 48px; height: 48px;
+    border-radius: 50%;
+    background: var(--btd-gold);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(186,117,23,0.35);
+  }
+  .step-body h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 8px; color: var(--btd-text); }
+  .step-body p { color: var(--btd-text-muted); line-height: 1.75; font-size: 0.95rem; }
+  .step-body code {
+    background: rgba(186,117,23,0.15);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: var(--btd-gold-light);
+    border: 1px solid rgba(186,117,23,0.25);
+  }
+
+  /* ─── WHAT'S INCLUDED ─── */
+  .included-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 700px) { .included-grid { grid-template-columns: 1fr; } }
+  .included-item {
+    background: var(--btd-bg-card);
+    border: 1px solid var(--btd-border-soft);
+    border-radius: 12px;
+    padding: 24px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    transition: border-color 0.2s;
+  }
+  .included-item:hover { border-color: var(--btd-border); }
+  .included-icon { font-size: 1.6rem; flex-shrink: 0; }
+  .included-item h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 4px; color: var(--btd-text); }
+  .included-item p { color: var(--btd-text-muted); font-size: 0.85rem; line-height: 1.65; }
+
+  /* ─── PRICING ─── */
+  .pricing-bg {
+    background: linear-gradient(160deg, #1C1A15 0%, #231F14 100%);
+    border-top: 1px solid var(--btd-border-soft);
+  }
+  .pricing-section { padding: 88px 20px; max-width: 700px; margin: 0 auto; text-align: center; }
+  .price-card {
+    background: var(--btd-bg-card);
+    border: 2px solid var(--btd-gold);
+    border-radius: 20px;
+    padding: 52px 44px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4), 0 0 60px rgba(186,117,23,0.12);
+    position: relative;
+  }
+  .price-best {
+    position: absolute;
+    top: -14px; left: 50%;
+    transform: translateX(-50%);
+    background: var(--btd-gold);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 5px 22px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(186,117,23,0.4);
+  }
+  .price-name { font-size: 1rem; font-weight: 700; color: var(--btd-text-muted); margin-bottom: 20px; }
+  .price-amount { font-family: 'Sora', sans-serif; font-size: 4.5rem; font-weight: 800; color: var(--btd-text); line-height: 1; }
+  .price-amount span { font-size: 1.6rem; vertical-align: top; margin-top: 14px; display: inline-block; color: var(--btd-gold-mid); }
+  .price-sub { color: var(--btd-text-muted); font-size: 0.9rem; margin: 10px 0 36px; }
+  .price-features { list-style: none; text-align: left; margin-bottom: 40px; }
+  .price-features li {
+    padding: 11px 0;
+    border-bottom: 1px solid var(--btd-border-soft);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.95rem;
+    color: var(--btd-text);
+  }
+  .price-features li:last-child { border-bottom: none; }
+  .check { color: var(--btd-gold-mid); font-weight: 900; font-size: 1.1rem; }
+  .price-note { color: var(--btd-text-muted); font-size: 0.85rem; margin-top: 20px; }
+
+  /* ─── FAQ ─── */
+  .faq-list { max-width: 720px; margin: 0 auto; }
+  .faq-item {
+    background: var(--btd-bg-card);
+    border: 1px solid var(--btd-border-soft);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .faq-item:hover { border-color: var(--btd-border); }
+  .faq-q {
+    padding: 20px 24px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--btd-text);
+  }
+  .faq-q::after { content: '+'; font-size: 1.4rem; color: var(--btd-gold); font-weight: 300; }
+  .faq-a { padding: 0 24px 20px; color: var(--btd-text-muted); font-size: 0.92rem; line-height: 1.8; }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: #18160F;
+    color: var(--btd-text-muted);
+    text-align: center;
+    padding: 48px 20px;
+    font-size: 0.85rem;
+    border-top: 1px solid var(--btd-border-soft);
+  }
+  footer .footer-logo { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; }
+  footer strong { color: var(--btd-text); }
+  footer p { margin-top: 8px; line-height: 1.7; }
+  footer a { color: var(--btd-gold); text-decoration: none; }
+  footer a:hover { color: var(--btd-gold-light); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo-mark">
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <!-- candlestick 1 (small) -->
+      <rect x="4" y="22" width="5" height="6" rx="1" fill="#BA7517"/>
+      <line x1="6.5" y1="20" x2="6.5" y2="22" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="6.5" y1="28" x2="6.5" y2="30" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- candlestick 2 (medium) -->
+      <rect x="13" y="15" width="5" height="9" rx="1" fill="#EF9F27"/>
+      <line x1="15.5" y1="12" x2="15.5" y2="15" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="15.5" y1="24" x2="15.5" y2="27" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- candlestick 3 (tall) -->
+      <rect x="22" y="6" width="5" height="14" rx="1" fill="#FAC775"/>
+      <line x1="24.5" y1="3" x2="24.5" y2="6" stroke="#FAC775" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24.5" y1="20" x2="24.5" y2="23" stroke="#FAC775" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="logo-text">BestTradeDesk</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how-it-works">Setup</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <a href="#pricing" class="nav-cta">Get the Template →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="badge">🚀 Notion Template</div>
+  <h1>Your Options Trades.<br><span>Tracked Automatically.</span></h1>
+  <p>Connect Interactive Brokers to Notion in minutes. Every trade syncs automatically — no manual entry, no spreadsheets, no guesswork.</p>
+  <div class="cta-group">
+    <a href="#pricing" class="btn-primary">Get the Template →</a>
+    <a href="https://boom-warlock-abe.notion.site/Options-Trade-Tracker-IBKR-Sync-ee2c0aab3e61826892e881c8819e0244" target="_blank" class="btn-secondary">Preview Template →</a>
+  </div>
+
+  <!-- DB PREVIEW -->
+  <div class="db-preview">
+    <div class="db-header">
+      <div class="dot dot-r"></div>
+      <div class="dot dot-y"></div>
+      <div class="dot dot-g"></div>
+      <span>Options Trades — IBKR Sync</span>
+    </div>
+    <table class="db-table">
+      <thead>
+        <tr>
+          <th>Trade</th><th>Status</th><th>Type</th><th>Dir</th><th>Strike</th><th>Entry</th><th>Exit</th><th>P&amp;L $</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>🟡 📈 AAPL $200 Call</td>
+          <td><span class="tag tag-open">🟡 Open</span></td>
+          <td><span class="tag tag-call">Call</span></td>
+          <td><span class="tag tag-long">Long</span></td>
+          <td>$200</td><td>$3.40</td><td>—</td><td>—</td>
+        </tr>
+        <tr>
+          <td>🟢 📈 NVDA $900 Call</td>
+          <td><span class="tag tag-closed">🟢 Profit</span></td>
+          <td><span class="tag tag-call">Call</span></td>
+          <td><span class="tag tag-long">Long</span></td>
+          <td>$900</td><td>$8.20</td><td>$15.60</td><td class="pos">+$740</td>
+        </tr>
+        <tr>
+          <td>🟢 📉 SPY $490 Put</td>
+          <td><span class="tag tag-closed">🟢 Profit</span></td>
+          <td><span class="tag tag-put">Put</span></td>
+          <td><span class="tag tag-short">Short</span></td>
+          <td>$490</td><td>$2.80</td><td>$0.50</td><td class="pos">+$230</td>
+        </tr>
+        <tr>
+          <td>🔴 📈 TSLA $250 Call</td>
+          <td><span class="tag" style="background:rgba(235,87,87,0.18);color:#eb5757;">🔴 Loss</span></td>
+          <td><span class="tag tag-call">Call</span></td>
+          <td><span class="tag tag-long">Long</span></td>
+          <td>$250</td><td>$5.10</td><td>$2.20</td><td class="neg">-$290</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="hero-meta">
+    <div class="hero-stat"><div class="num">5 min</div><div class="label">Setup time</div></div>
+    <div class="hero-stat"><div class="num">0</div><div class="label">Manual entry</div></div>
+    <div class="hero-stat"><div class="num">4</div><div class="label">Views included</div></div>
+    <div class="hero-stat"><div class="num">∞</div><div class="label">Trades tracked</div></div>
+  </div>
+</section>
+
+<!-- SOCIAL PROOF -->
+<div class="social-proof">
+  <p>Built by an active options trader using <strong>IBKR + FlowTerminal</strong> signals. Used for real money, every day.</p>
+</div>
+
+<!-- FEATURES -->
+<div id="features">
+  <div class="section">
+    <div class="section-label">Features</div>
+    <h2>Everything a serious options trader needs</h2>
+    <p class="subtitle">Stop wasting time on spreadsheets. Focus on finding trades, not recording them.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🔄</div>
+        <h3>Auto-Sync from IBKR</h3>
+        <p>One Python script pulls all your options trades from Interactive Brokers via Flex Query API. No TWS desktop app required — works with IBKR web account only.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h3>4 Views Out-of-the-Box</h3>
+        <p>Table view, Kanban board by status, expiry calendar, and filtered views for open/closed positions. See your book at a glance.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💰</div>
+        <h3>P&amp;L Calculated Automatically</h3>
+        <p>P&amp;L $, P&amp;L %, Premium paid, and Max Risk are computed for every trade — both Long and Short positions, FIFO matched.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏷️</div>
+        <h3>Trade Tagging &amp; Journal</h3>
+        <p>Tag trades as Flow Signal, Earnings, Breakout, Reversal… Add Setup notes and review what strategies actually work for you.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Smart Upsert — No Duplicates</h3>
+        <p>Run the sync as often as you like. The script updates existing records rather than creating duplicates, keeping your database clean.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🛡️</div>
+        <h3>Handles All Scenarios</h3>
+        <p>Expired options, early exits, partial fills, and assignments are all handled correctly. FIFO matching for multi-leg positions.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SCREENSHOTS -->
+<div style="background: var(--btd-bg-card); border-top: 1px solid var(--btd-border-soft); border-bottom: 1px solid var(--btd-border-soft); padding: 88px 20px;">
+  <div style="max-width: 1100px; margin: 0 auto;">
+    <div class="section-label">See it in action</div>
+    <h2 style="text-align:center; font-family:'Sora',sans-serif; font-size:clamp(1.6rem,3vw,2.2rem); font-weight:800; margin-bottom:16px; color:var(--btd-text);">Your trades, beautifully organized</h2>
+    <p style="text-align:center; color:var(--btd-text-muted); font-size:1.05rem; max-width:600px; margin:0 auto 56px; line-height:1.75;">4 views, built-in from day one. Switch between them in one click.</p>
+
+    <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:24px;">
+
+      <div style="background:var(--btd-bg-deep); border:1px solid var(--btd-border); border-radius:14px; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 48px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <img src="screenshots/board_status.png" alt="Board by Status view" style="width:100%; display:block; border-bottom:1px solid var(--btd-border-soft);">
+        <div style="padding:16px 20px;">
+          <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:0.95rem; color:var(--btd-text); margin-bottom:4px;">📋 Board by Status</div>
+          <div style="font-size:0.85rem; color:var(--btd-text-muted);">Kanban view — Loss, Profit, Open columns at a glance</div>
+        </div>
+      </div>
+     
+      <div style="background:var(--btd-bg-deep); border:1px solid var(--btd-border); border-radius:14px; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 48px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <img src="screenshots/trade_detail.png" alt="Trade detail card" style="width:100%; display:block; border-bottom:1px solid var(--btd-border-soft);">
+        <div style="padding:16px 20px;">
+          <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:0.95rem; color:var(--btd-text); margin-bottom:4px;">🗂 Trade Detail Card</div>
+          <div style="font-size:0.85rem; color:var(--btd-text-muted);">Full trade record — entry, exit, P&amp;L $, P&amp;L %, Contract, Max Risk</div>
+        </div>
+      </div>
+
+      <div style="background:var(--btd-bg-deep); border:1px solid var(--btd-border); border-radius:14px; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 48px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <img src="screenshots/open_positions.png" alt="Open Positions view" style="width:100%; display:block; border-bottom:1px solid var(--btd-border-soft);">
+        <div style="padding:16px 20px;">
+          <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:0.95rem; color:var(--btd-text); margin-bottom:4px;">🟡 Open Positions</div>
+          <div style="font-size:0.85rem; color:var(--btd-text-muted);">All active trades filtered and sorted by expiry</div>
+        </div>
+      </div>
+
+      <div style="background:var(--btd-bg-deep); border:1px solid var(--btd-border); border-radius:14px; overflow:hidden; transition:transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 16px 48px rgba(0,0,0,0.4)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+        <img src="screenshots/expiry_calendar.png" alt="Expiry Calendar view" style="width:100%; display:block; border-bottom:1px solid var(--btd-border-soft);">
+        <div style="padding:16px 20px;">
+          <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:0.95rem; color:var(--btd-text); margin-bottom:4px;">📅 Expiry Calendar</div>
+          <div style="font-size:0.85rem; color:var(--btd-text-muted);">See which contracts expire this week, next week, next month</div>
+        </div>
+      </div>
+
+
+
+    </div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS -->
+<div class="how-bg" id="how-it-works">
+  <div class="how-section">
+    <div class="section-label">Setup</div>
+    <h2>Live in 5 minutes, literally.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Duplicate the Notion Template</h3>
+          <p>Click the link, hit "Duplicate" in Notion. Your database is ready with all views and properties pre-configured.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Create a Notion Integration</h3>
+          <p>Go to <code>notion.so/my-integrations</code>, create an internal integration, copy the secret token.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Set Up IBKR Flex Query</h3>
+          <p>In IBKR Account Management, create a Flex Query for Options trades. Get your Token + Query ID from Settings → Flex Web Service.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Fill in .env and Run</h3>
+          <p>Copy <code>.env.example</code> to <code>.env</code>, paste your 4 credentials, run <code>python ibkr_sync.py</code>. Done. Trades appear in Notion instantly.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WHAT'S INCLUDED -->
+<div>
+  <div class="section">
+    <div class="section-label">What you get</div>
+    <h2>Complete package — nothing to figure out</h2>
+    <p class="subtitle">Everything is documented, pre-configured, and ready to use.</p>
+    <div class="included-grid">
+      <div class="included-item">
+        <div class="included-icon">📋</div>
+        <div><h4>Notion Template</h4><p>Pre-built database with all fields, views, and filters. Duplicate with one click.</p></div>
+      </div>
+      <div class="included-item">
+        <div class="included-icon">🐍</div>
+        <div><h4>Python Sync Script</h4><p>Production-ready script with retry logic, error handling, and upsert support.</p></div>
+      </div>
+      <div class="included-item">
+        <div class="included-icon">📄</div>
+        <div><h4>Setup Guide</h4><p>Step-by-step instructions with screenshots for IBKR Flex Query setup.</p></div>
+      </div>
+      <div class="included-item">
+        <div class="included-icon">⚙️</div>
+        <div><h4>.env Template</h4><p>Pre-configured environment file. Just fill in 4 values and go.</p></div>
+      </div>
+      <div class="included-item">
+        <div class="included-icon">📅</div>
+        <div><h4>Scheduling Guide</h4><p>How to auto-run the sync daily on Windows (Task Scheduler) and Mac (cron).</p></div>
+      </div>
+      <div class="included-item">
+        <div class="included-icon">🔄</div>
+        <div><h4>Free Updates</h4><p>Access to all future improvements and new features.</p></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPORT -->
+<div style="background: var(--btd-bg-card); border-top: 1px solid var(--btd-border-soft); border-bottom: 1px solid var(--btd-border-soft); padding: 28px 20px; text-align: center;">
+  <p style="color: var(--btd-text-muted); font-size: 0.95rem;">
+    💬 Questions before buying? Just email us —
+    <a href="mailto:besttradedesk@gmail.com" style="color: var(--btd-gold-mid); font-weight: 600; text-decoration: none;">besttradedesk@gmail.com</a>
+    &nbsp;·&nbsp; We reply within 24 hours.
+  </p>
+</div>
+
+<!-- PRICING -->
+<div class="pricing-bg" id="pricing">
+  <div class="pricing-section">
+    <div class="section-label">Pricing</div>
+    <h2>One-time payment. Yours forever.</h2>
+    <p class="subtitle" style="margin-bottom: 44px;">No subscriptions. No recurring fees. Pay once, use forever.</p>
+    <div class="price-card">
+      <div class="price-best">⭐ Best Value</div>
+      <div class="price-name">Options Tracker Complete Pack</div>
+      <div class="price-amount"><span>$</span>27</div>
+      <div class="price-sub">One-time payment — lifetime access</div>
+      <ul class="price-features">
+        <li><span class="check">✓</span> Notion Template (duplicate-ready)</li>
+        <li><span class="check">✓</span> Python sync script (ibkr_sync.py)</li>
+        <li><span class="check">✓</span> .env configuration template</li>
+        <li><span class="check">✓</span> IBKR Flex Query setup guide</li>
+        <li><span class="check">✓</span> Deployment &amp; scheduling guide</li>
+        <li><span class="check">✓</span> Works on Windows, Mac, Linux</li>
+        <li><span class="check">✓</span> Free updates forever</li>
+      </ul>
+      <a href="GUMROAD_PRODUCT_LINK" target="_blank" class="btn-primary" style="width: 100%; text-align: center; display: block; padding: 18px; font-size: 1.05rem;">
+        Get Instant Access — $27 →
+      </a>
+      <p class="price-note">🔒 Secure checkout via Gumroad. Notion template link delivered instantly after payment.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FAQ -->
+<div>
+  <div class="section">
+    <div class="section-label">FAQ</div>
+    <h2>Common questions</h2>
+    <p class="subtitle" style="margin-bottom: 44px;"></p>
+    <div class="faq-list">
+      <div class="faq-item">
+        <div class="faq-q">Do I need TWS or IB Gateway running?</div>
+        <div class="faq-a">No. The script uses IBKR's Flex Query web API, which works with just your browser-based IBKR account. No desktop software required.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do I need to know Python?</div>
+        <div class="faq-a">No coding required. You only need to fill in 4 values in a text file (.env) and run one command. The guide walks you through everything step by step.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Does it work with paper trading accounts?</div>
+        <div class="faq-a">Yes. IBKR Flex Query works for both live and paper trading accounts. Just make sure you create the Flex Query in the correct account.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What option strategies are supported?</div>
+        <div class="faq-a">All single-leg options: long calls, long puts, short calls (CSP, covered calls), short puts. FIFO matching handles partial fills and multi-day entries. Multi-leg spreads show as individual legs.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">How often does it sync?</div>
+        <div class="faq-a">You control the frequency. Run it manually after trading hours, or schedule it to run automatically every hour/day. The script won't create duplicates no matter how often you run it.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can I customize the Notion database?</div>
+        <div class="faq-a">Absolutely. It's your Notion workspace — add, remove, or rename any fields. The sync script uses property names that you can edit in the code.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo">
+    <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="22" width="5" height="6" rx="1" fill="#BA7517"/>
+      <line x1="6.5" y1="20" x2="6.5" y2="22" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="6.5" y1="28" x2="6.5" y2="30" stroke="#BA7517" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="13" y="15" width="5" height="9" rx="1" fill="#EF9F27"/>
+      <line x1="15.5" y1="12" x2="15.5" y2="15" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="15.5" y1="24" x2="15.5" y2="27" stroke="#EF9F27" stroke-width="1.5" stroke-linecap="round"/>
+      <rect x="22" y="6" width="5" height="14" rx="1" fill="#FAC775"/>
+      <line x1="24.5" y1="3" x2="24.5" y2="6" stroke="#FAC775" stroke-width="1.5" stroke-linecap="round"/>
+      <line x1="24.5" y1="20" x2="24.5" y2="23" stroke="#FAC775" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <strong>BestTradeDesk</strong>
+  </div>
+  <p>Options Trade Tracker — IBKR Auto-Sync for Notion</p>
+  <p style="margin-top: 6px;">Built by a trader, for traders. Not affiliated with Interactive Brokers or Notion.</p>
+  <p style="margin-top: 14px;"><a href="mailto:besttradedesk@gmail.com">besttradedesk@gmail.com</a></p>
+</footer>
+
+</body>
+</html>
